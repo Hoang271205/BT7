@@ -19,6 +19,7 @@ async function fetchAndRenderTable() {
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$${item.price}</td>
           <td class="px-6 py-4 whitespace-nowrap img-cell">${item.image ? `<img src="${item.image}" alt="Ảnh sản phẩm" class="h-16 w-16 object-cover rounded-md shadow">` : 'N/A'}</td>
           <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <button data-id="${item.id}" class="edit-btn text-blue-600 hover:text-blue-900 transition-colors duration-200">Sửa</button>
               <button data-id="${item.id}" class="delete-btn text-red-600 hover:text-red-900 transition-colors duration-200">Xoá</button>
           </td>
         `;
@@ -85,6 +86,25 @@ async function deleteProduct(productId, btnElement) {
         console.error(err);
     }
 }
+async function updateProduct(productId, updatedData) {
+const out = document.getElementById('output');
+out.textContent = `Đang cập nhật sản phẩm ID: ${productId}...`;
+try {
+    const res = await fetch(`${apiUrl}/${productId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedData)
+    });
+    if (!res.ok) throw new Error(`Lỗi khi cập nhật sản phẩm: ${res.status} - ${await res.text()}`);
+    out.textContent = `Sản phẩm ID: ${productId} đã được cập nhật thành công!`;
+    fetchAndRenderTable();
+} catch(err) {
+    out.textContent = 'Lỗi: ' + (err.message || err);
+    console.error(err);
+}
+    }
 
 window.addEventListener('DOMContentLoaded', fetchAndRenderTable);
 
@@ -98,5 +118,36 @@ document.getElementById('tableBody').addEventListener('click', (event) => {
         if (confirm(`Bạn có chắc chắn muốn xóa sản phẩm có ID ${productId} không?`)) {
             deleteProduct(productId, event.target);
         }
+    }
+    if (event.target.classList.contains('edit-btn')) {
+        const productId = event.target.dataset.id;
+
+        const tr = event.target.closest('tr');
+        const currentName = tr.children[1].textContent;
+        const currentPriceText = tr.children[2].textContent;
+        const currentPrice = Number(currentPriceText.replace('$', ''));
+        const currentImage = tr.children[3].querySelector('img') ? tr.children[3].querySelector('img').src : '';
+
+        const newName = prompt('Nhập tên sản phẩm mới:', currentName);
+        if (newName === null) return; 
+
+        const newPriceStr = prompt('Nhập giá sản phẩm mới:', currentPrice);
+        if (newPriceStr === null) return;  
+        const newPrice = Number(newPriceStr);
+        if (isNaN(newPrice) || newPrice < 0) {
+            alert('Giá sản phẩm không hợp lệ!');
+            return;
+        }
+
+        const newImage = prompt('Nhập URL hình ảnh mới (để trống nếu không có):', currentImage);
+        if (newImage === null) return; 
+
+        const updatedData = {
+            name: newName,
+            price: newPrice,
+            image: newImage
+        };
+
+        updateProduct(productId, updatedData);
     }
 });
